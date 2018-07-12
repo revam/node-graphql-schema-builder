@@ -1,0 +1,30 @@
+{
+  "name": "graphql-schema-builder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A simple GraphQL schema builder",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "del-cli lib && tsc -p .",
+    "build:docs": ""
+  },
+  "keywords": [
+    "graphql",
+    "helper-class"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/graphql": "0.13.3",
+    "@types/node": "^10.5.2",
+    "del-cli": "^1.1.0",
+    "graphql": "^0.13.2",
+    "graphql-tools": "^3.0.5",
+    "tslint": "^5.10.0",
+    "typescript": "^2.9.2"
+  },
+  "peerDependencies": {
+    "graphql-tools": "^3.*"
+  }
+}

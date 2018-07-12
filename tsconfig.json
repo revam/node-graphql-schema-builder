@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./lib",
+    "target": "esnext",
+    "module": "commonjs",
+    "sourceMap": false,
+    "declaration": true,
+    "strictNullChecks": true,
+    "moduleResolution": "node",
+    "stripInternal": true,
+    "lib": [
+      "es2015",
+      "es2016",
+      "es2017",
+      "es2018",
+      "esnext",
+    ],
+  },
+  "exclude": [
+    "lib/**/*.js",
+    "lib/**/*.ts",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
+}
