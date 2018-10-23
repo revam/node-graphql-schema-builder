@@ -5,9 +5,12 @@
   "tasks": [
     {
       "type": "npm",
-      "script": "build",
-      "label": "npm build",
-      "problemMatcher": [],
+      "script": "build:dev",
+      "label": "npm build (dev)",
+      "problemMatcher": [
+        "$tsc",
+        "$tslint5"
+      ],
       "presentation": {
         "echo": true,
         "reveal": "silent",
@@ -18,6 +21,22 @@
         "kind": "build",
         "isDefault": true
       }
+    },
+    {
+      "type": "npm",
+      "script": "build",
+      "label": "npm build",
+      "problemMatcher": [
+        "$tsc",
+        "$tslint5"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "dedicated"
+      },
+      "group": "build"
     },
     {
       "type": "npm",

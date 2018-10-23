@@ -1,11 +1,12 @@
 
 import { exists, readdir, stat } from "fs";
 import { GraphQLSchema } from "graphql";
-import { makeExecutableSchema, IResolvers, IDirectiveResolvers } from "graphql-tools";
+import { IDirectiveResolvers, IResolvers, makeExecutableSchema } from "graphql-tools";
 import { recursive as merge } from "merge";
 import { basename, extname, join, resolve } from "path";
 import { promisify } from "util";
 
+// tslint:disable-next-line:deprecation
 const existsAsync = promisify(exists);
 const readdirAsync = promisify(readdir);
 const statAsync = promisify(stat);
@@ -19,20 +20,23 @@ export default class SchemaBuilder {
    * All registered definitions, mapped to a sortable identifier.
    */
   protected readonly definitions: Map<string, string> = new Map();
+
   /**
    * All registered resolvers, mapped to a sortable identifier.
    */
   protected readonly resolvers: Map<string, IResolvers> = new Map();
+
   /**
    * All registered directives, mapped to a sortable identifier.
    */
   protected readonly directives: Map<string, IDirectiveResolvers> = new Map();
+
   /**
    * The sort order of definitions, resolvers and directives.
    */
-  protected readonly order: ReadonlyArray<string> = ["Query", "Mutation", "Subscription"];
+  protected readonly order: ReadonlyArray<string> = ["index", "Query", "Mutation", "Subscription"];
 
-  constructor(order?: string[] | ReadonlyArray<string>) {
+  public constructor(order?: string[] | ReadonlyArray<string>) {
     if (order && order instanceof Array && order.length) {
       this.order = order;
     }
@@ -59,7 +63,7 @@ export default class SchemaBuilder {
   }
 
   /**
-   * Add available directives to the built schema.
+   * Add directives to the built schema.
    * @param id Sort identifier
    * @param directives Directives
    */
@@ -107,17 +111,17 @@ export default class SchemaBuilder {
   /**
    * Build a schema with the current definitions, resolvers and directives.
    */
-  public getSchema(): GraphQLSchema {
+  public buildSchema(): GraphQLSchema {
     const sort = sortMapInOrder(this.order);
     const typeDefs = Array.from(this.definitions).sort(sort).map(([, t]) => t);
-    const resolvers = Array.from(this.resolvers).sort(sort).reduce((p, [,c]) => merge(p, c), {});
-    const directiveResolvers = Array.from(this.directives).sort(sort).reduce((p, [,c]) => merge(p, c), {});
+    const resolvers = Array.from(this.resolvers).sort(sort).reduce((p, [, c]) => merge(p, c), {});
+    const directiveResolvers = Array.from(this.directives).sort(sort).reduce((p, [, c]) => merge(p, c), {});
     return makeExecutableSchema({typeDefs, resolvers, directiveResolvers});
   }
 }
 
 /**
- * Sort an array according to `order` for any known ids.
+ * Sort an array according to `order` for any known ids and preserve index for all other.
  * @param order Sorted ids
  */
 function sortMapInOrder(order: ReadonlyArray<string>): ([aN]: [string, any], [bN]: [string, any]) => number {
