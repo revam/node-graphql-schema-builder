@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- Added a method for importing values from individual files.
+
+- Added some exports from "graphql-tools" and "graphql-tag".
+
+- Added new interface and type exports.
+
+- Added ability to check if an id is registered.
+
+- Added a method (`prepareSchema`) to prepare for creation of a schema.
+
+### Changed
+
+- Method `addDefinitions` on builder now accepts either a string or a
+  `DocumentNode`.
+
+### Fixed
+
+- Method `addDirectives` and related functionality was using incorrect type for
+  directive visitors.
+
 ## [0.1.1] - 2018-10-23
 
 ### Added
