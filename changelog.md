@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## 0.1.1 - 2018-10-23
+## [0.1.1] - 2018-10-23
 
 ### Added
 
@@ -25,4 +25,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Initial release
 
-[Unreleased]: https://github.com/revam/node-graphql-schema-builder/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/revam/node-graphql-schema-builder/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/revam/node-graphql-schema-builder/compare/v0.1.0...v0.1.1
