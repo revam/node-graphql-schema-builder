@@ -5,7 +5,8 @@
   "extends": "tslint:all",
   "rules": {
     // Enabled
-    "max-line-length": [true, 120],
+    "cyclomatic-complexity": [true, 30],
+    "max-line-length": [true, 140],
     "max-file-line-count": [true, 2000],
     "file-name-casing": [true, "kebab-case"],
     "prefer-const": true,
@@ -94,6 +95,14 @@
       ["describe", "only"],
       ["it", "only"]
     ],
+    "trailing-comma": [
+      true,
+      {
+        "multiline": "always",
+        "singleline": "never",
+        "esSpecCompliant": true
+      }
+    ],
     "no-bitwise": true,
     "binary-expression-operand-order": true,
     "no-implicit-dependencies": [true, "dev"],
@@ -105,7 +114,6 @@
     // Disabled
     "strict-boolean-expressions": false,
     "switch-default": false,
-    "cyclomatic-complexity": [true, 20],
     "interface-name": false,
     "max-classes-per-file": false,
     "newline-before-return": false,
