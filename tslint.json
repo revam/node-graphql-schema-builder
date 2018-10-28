@@ -116,6 +116,7 @@
     "switch-default": false,
     "interface-name": false,
     "max-classes-per-file": false,
+    "match-default-export-name": false,
     "newline-before-return": false,
     "newline-per-chained-call": false,
     "no-console": false,

@@ -38,15 +38,29 @@ export default class SchemaBuilder {
   protected readonly directives: Map<string, SchemaDirectives> = new Map();
 
   /**
-   * The sort order of definitions, resolvers and directives.
+   * Contains all imported identifiers.
    */
-  protected readonly order: ReadonlyArray<string> = ["index", "Query", "Mutation", "Subscription"];
+  protected readonly importedIdentifiers: Set<string> = new Set();
 
-  public constructor(order?: string[] | ReadonlyArray<string>) {
-    if (order && order instanceof Array && order.length) {
-      this.order = order;
-    }
-  }
+  /**
+   *
+   */
+  protected readonly sortAfterMap: Map<string, Set<string>> = new Map();
+
+  /**
+   *
+   */
+  protected readonly sortBeforeMap: Map<string, Set<string>> = new Map();
+
+  /**
+   *
+   */
+  protected readonly sortEndSet: Set<string> = new Set();
+
+  /**
+   *
+   */
+  protected readonly sortStartSet: Set<string> = new Set(["index", "Query", "Mutation", "Subscription"]);
 
   /**
    * Add definietions to the built schema.
@@ -134,6 +148,10 @@ export default class SchemaBuilder {
    *   - "definitons" = string | DocumentNode
    *   - "resolvers" = IResolvers
    *   - "directives" = SchemaDirectives
+   *   - "sortAfter" = [string, ...string[]]
+   *   - "sortBefore" = [string, ...string[]]
+   *   - "sortStart" = boolean
+   *   - "sortEnd" = boolean
    *
    * @param path Import from this folder.
    * @param extensions Extensions to import in folder.
@@ -167,6 +185,10 @@ export default class SchemaBuilder {
    *   - "definitons" = string | DocumentNode
    *   - "resolvers" = IResolvers
    *   - "directives" = SchemaDirectives
+   *   - "sortAfter" = [string, ...string[]]
+   *   - "sortBefore" = [string, ...string[]]
+   *   - "sortStart" = boolean
+   *   - "sortEnd" = boolean
    *
    * @param path Import this file.
    * @returns the identifier for the import.
@@ -183,7 +205,7 @@ export default class SchemaBuilder {
       const imported = await import(path);
       if (typeof imported === "object" || typeof imported === "function") {
         // Accepted values are: 1) raw definition strings, and 2) document nodes.
-        if (typeof imported.definitions === "string" || typeof imported.definietions === "object") {
+        if (typeof imported.definitions === "string" || typeof imported.definitions === "object") {
           this.addDefinions(id, imported.definitions);
         }
         // Accepted values are: 1) resolvers.
@@ -194,6 +216,22 @@ export default class SchemaBuilder {
         if (typeof imported.directives === "object") {
           this.addDirectives(id, imported.directives);
         }
+        // Accepted values are: 1) an array (of strings).
+        if (typeof imported.sortAfter === "object" && imported.sortAfter instanceof Array) {
+          this.sortAfter(id, ...imported.sortAfter as [any, ...any[]]);
+        }
+        // Accepted values are: 1) an array (of strings).
+        if (typeof imported.sortAfter === "object" && imported.sortBefore instanceof Array) {
+          this.sortBefore(id, ...imported.sortBefore as [any, ...any[]]);
+        }
+        // Accepted values are: 1) a boolean.
+        if (typeof imported.sortStart === "boolean" && imported.sortStart) {
+          this.sortStart(id);
+        }
+        // Accepted values are: 1) a boolean.
+        if (typeof imported.sortEnd === "boolean" && imported.sortEnd) {
+          this.sortEnd(id);
+        }
       }
     }
     // Return the identifier if we imported any definitions, resolvers or
@@ -201,6 +239,42 @@ export default class SchemaBuilder {
     if (this.has(id)) {
       return id;
     }
+  }
+
+  /**
+   * Ensures `id` is sorted __after__ all identifier in `ids`
+   */
+  public sortAfter(id: string, ...ids: [string, ...string[]]): this {
+    if (ids.length > 0) {
+      this.sortAfterMap.set(id, new Set(ids));
+    }
+    return this;
+  }
+
+  /**
+   * Ensures `id` is sorted __before__ all identifers in `ids`.
+   */
+  public sortBefore(id: string, ...ids: [string, ...string[]]): this {
+    if (ids.length > 0) {
+      this.sortBeforeMap.set(id, new Set(ids));
+    }
+    return this;
+  }
+
+  /**
+   * Ensures any identifiers in `ids` is sorted at __the end of__ the list.
+   */
+  public sortEnd(...ids: [string, ...string[]]): this {
+    ids.forEach((id) => this.sortEndSet.add(id));
+    return this;
+  }
+
+  /**
+   * Ensures any identifiers in `ids` is sorted at __the start of__ the list.
+   */
+  public sortStart(...ids: [string, ...string[]]): this {
+    ids.forEach((id) => this.sortStartSet.add(id));
+    return this;
   }
 
   /**
@@ -221,11 +295,124 @@ export default class SchemaBuilder {
   }
 
   /**
-   * Apply sort logic on iterator values and map values to
+   * Apply sort logic on iterator key-value pairs and map to values.
+   * @throws SortError
    */
   protected applySortAndMap<T>(iterator: Iterable<[string, T]> | IterableIterator<[string, T]>): T[] {
-    const sort = sortMapInOrder(this.order);
-    return Array.from(iterator).sort(sort).map(([, item]) => item);
+    const array = Array.from(iterator);
+    array.sort(([A], [B]) => {
+      // TODO: Simplify or substitute logic.
+      let n: number = 0;
+      // A wants to go up (A ↑)
+      if (this.sortStartSet.has(A)) {
+        n += 0b00000001; //    1
+      }
+      // B wants to go up (B ↑)
+      if (this.sortStartSet.has(B)) {
+        n += 0b00000010; //    2
+      }
+      // A wants to go down (A ↓)
+      if (this.sortEndSet.has(A)) {
+        n += 0b00000100; //    4
+      }
+      // B wants to go down (B ↓)
+      if (this.sortEndSet.has(B)) {
+        n += 0b00001000; //    8
+      }
+      // A after B (A → B)
+      if (this.sortAfterMap.has(A) && this.sortAfterMap.get(A)!.has(B)) {
+        n += 0b00010000; //   16
+      }
+      // B after A (B → A)
+      if (this.sortAfterMap.has(B) && this.sortAfterMap.get(B)!.has(A)) {
+        n += 0b00100000; //   32
+      }
+      // A before B (A ← B)
+      if (this.sortBeforeMap.has(A) && this.sortBeforeMap.get(A)!.has(B)) {
+        n += 0b01000000; //   64
+      }
+      // B before A (B ← A)
+      if (this.sortBeforeMap.has(B) && this.sortBeforeMap.get(B)!.has(A)) {
+        n += 0b10000000; //  128
+      }
+      // 46 known cases
+      switch (n) {
+        // "leave A and B unchanged with respect to each other" - MDN
+        //   Binary      //  Int  //  Action
+        case 0b00000000: //    0  //  None
+        case 0b00000011: //    3  //   A ↑  +  B ↑
+        case 0b00001100: //   12  //   A ↓  +  B ↓
+          return 0;
+
+        // "sort A to an index lower than B" - MDN
+        //   Binary      //  Int  //  Action
+        case 0b00000001: //    1  //   A ↑
+        case 0b00001000: //    8  //   B ↓
+        case 0b00001001: //    9  //   B ↓  +  A ↑
+        case 0b00100000: //   32  //  B → A
+        case 0b00100001: //   33  //  B → A +  A ↑
+        case 0b00101000: //   40  //  B → A +  B ↓  +  A ↑
+        case 0b00101001: //   41  //  B → A +  B ↓  +  A ↑
+        case 0b01000000: //   64  //  A ← B
+        case 0b01000001: //   65  //  A ← B +  A ↑
+        case 0b01001000: //   72  //  A ← B +  B ↓
+        case 0b01001001: //   73  //  A ← B +  B ↓  +  A ↑
+        case 0b01100000: //   96  //  A ← B + B → A
+        case 0b01100001: //   97  //  A ← B + B → A +  A ↑
+        case 0b01101000: //  104  //  A ← B + B → A +  B ↓  +  A ↑
+        case 0b01101001: //  105  //  A ← B + B → A +  B ↓  +  A ↑
+          return -1;
+
+        // "sort B to an index lower than A" - MDN
+        //   Binary      //  Int  //  Action
+        case 0b00000010: //    2  //   B ↑
+        case 0b00000100: //    4  //   A ↓
+        case 0b00000110: //    6  //   A ↓  +  B ↑
+        case 0b00010000: //   16  //  A → B
+        case 0b00010010: //   18  //  A → B +  B ↑
+        case 0b00010100: //   20  //  A → B +  A ↓
+        case 0b00010110: //   22  //  A → B +  A ↓  +  B ↑
+        case 0b10000000: //  128  //  B ← A
+        case 0b10000010: //  130  //  B ← A +  B ↑
+        case 0b10000100: //  132  //  B ← A +  A ↓
+        case 0b10000110: //  134  //  B ← A +  A ↓  +  B ↑
+        case 0b10010000: //  144  //  B ← A + A → B
+        case 0b10010010: //  146  //  B ← A + A → B +  B ↑
+        case 0b10010100: //  148  //  B ← A + A → B +  A ↓
+        case 0b10010110: //  150  //  B ← A + A → B +  A ↓  +  B ↑
+          return 1;
+
+        // Conflict with A
+        //   Binary      //  Int  //  Action
+        case 0b00000101: //    5  //   A ↓  +  A ↑
+        case 0b00000111: //    7  //   A ↓  +  B ↑  +  A ↑
+        case 0b00001101: //   13  //   B ↓  +  A ↓  +  A ↑
+          throw sortError(`Conflict with identifier "${A}" (${n})`, n, A);
+
+        // Conflict with B
+        //   Binary      //  Int  //  Action
+        case 0b00001010: //   10  //
+        case 0b00001011: //   11  //
+        case 0b00001110: //   14  //
+          throw sortError(`Conflict with identifier "${B}" (${n})`, n, B);
+
+        // Conflict A and B
+        //   Binary      //  Int  //  Action
+        case 0b00001111: //   15  //   B ↓  +  A ↓  +  B ↑  +  A ↑
+        case 0b00110000: //   48  //  B → A + A → B
+        case 0b00111111: //   63  //  B → A + A → B +  B ↓  +  A ↓  +  B ↑  +  A ↑
+        case 0b11000000: //  192  //  B ← A + A ← B
+        case 0b11001111: //  207  //  B ← A + A ← B +  B ↓  +  A ↓  +  B ↑  +  A ↑
+        case 0b11110000: //  240  //  B ← A + A ← B + B → A + A → B
+        case 0b11111111: //  255  //  B ← A + A ← B + B → A + A → B +  B ↓  +  A ↓  +  B ↑  +  A ↑
+        throw sortError(`Conflict with identifiers "${A}" and "${B}" (${n})`, n, A, B);
+
+        // Unknown combination
+        default:
+          throw sortError(`Unknown combination (${n})`, n, A, B);
+      }
+    });
+    return array.map(([, item]) => item);
   }
 
   protected applySortAndMerge<T extends {}>(iterator: Iterable<[string, T]> | IterableIterator<[string, T]>): T {
@@ -234,21 +421,41 @@ export default class SchemaBuilder {
 }
 
 /**
- * Sort an array according to `order` for any known ids and preserve index for all other.
- * @param order Sorted ids
+ * Produce a SortError.
  */
-function sortMapInOrder(order: ReadonlyArray<string>): ([aN]: [string, any], [bN]: [string, any]) => number {
-  return ([aN], [bN]) => {
-    const aI = order.indexOf(aN);
-    const bI = order.indexOf(bN);
-    return aI >= 0 ? bI >= 0 ? aI - bI : 1 : bI >= 0 ? -1 : 0;
-  };
+function sortError(message: string, n: number, ...ids: [string, string?]): SortError {
+  const error = new Error(message) as SortError;
+  error.n = n;
+  error.identifiers = ids;
+  return error;
 }
 
 export interface PreparedApolloSchema {
   resolvers?: IResolvers;
   schemaDirectives?: SchemaDirectives;
   typeDefs: DocumentNode | DocumentNode[];
+}
+
+export interface SortError extends Error {
+  /**
+   * A combination of any or all well-known numbers listed below.
+   *
+   * Well-known numbers:
+   *  -   0 = <none>
+   *  -   1 =  A ↑
+   *  -   2 =  B ↑
+   *  -   4 =  A ↓
+   *  -   8 =  B ↓
+   *  -  16 = A → B
+   *  -  32 = B → B
+   *  -  64 = A ← B
+   *  - 128 = B ← A
+   */
+  n: number;
+  /**
+   * Identifiers with the sort conflict.
+   */
+  identifiers: [string, string?];
 }
 
 export type SchemaDirectives = Record<string, typeof SchemaDirectiveVisitor>;

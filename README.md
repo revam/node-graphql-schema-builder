@@ -41,6 +41,63 @@ async function buildSchema(schemaFolder) {
 }
 ```
 
+Apollo server example.
+
+Note: [script-loader](https://github.com/revam/node-script-loader) is another
+private package.
+
+```js
+import { ApolloServer } from "apollo-server";
+import SchemaBuilder from "graphql-schema-builder";
+import ScriptLoader from "script-loader";
+
+// See script-loader (>=0.2.1) for more info.
+ScriptLoader.start({
+  configPath: "./config.json",
+  info: {
+    description: "Apollo server example using schema builder",
+    name: "graphql-apollo-server-example",
+    version: "1.0.0",
+  },
+  prefixEnv: "NODE_",
+  script: {
+    description: "Start the server",
+    name: "start-server",
+  },
+  startupSteps: [
+    importSchema,
+    startServer,
+  ],
+});
+
+// Import the schema
+async function importSchema(loader) {
+  console.log("Importing schema...");
+  const builder = loader.state.builder = new SchemaBuilder();
+  await builder.importFrom(loader.getSettingOrEnv("schema-path", "./schema"));
+}
+
+// Start the server
+async function startServer(loader) {
+  console.log("Starting server...");
+  const builder = loader.state.builder;
+  const server = new ApolloServer({
+    ...builder.prepareSchema(),
+    context: createContext,
+  });
+  const { url } = await server.listen();
+  console.log("Server started, listening on %s", url);
+  return async () => server.stop();
+
+  async function createContext(context) {
+    return {
+      ...context,
+      loader,
+    };
+  }
+}
+```
+
 Express server example.
 
 Note: [script-loader](https://github.com/revam/node-script-loader) is another
@@ -54,7 +111,7 @@ import { createServer } from "http";
 import ScriptLoader from "script-loader";
 import { promisify } from "util";
 
-// See the script-loader (>=0.2.1) package for more info.
+// See script-loader (>=0.2.1) for more info.
 ScriptLoader.start({
   configPath: "./config.json",
   info: {
